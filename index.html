@@ -4,14 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport"
         content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-  <title>WebXR Improved Line Drawing</title>
+  <title>WebXR Improved Drawing</title>
 
   <!-- three.js -->
   <script src="https://unpkg.com/three@0.126.0/build/three.js"></script>
   <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://unpkg.com/three@0.126.0/examples/js/lines/LineSegmentsGeometry.js"></script>
-  <script src="https://unpkg.com/three@0.126.0/examples/js/lines/LineMaterial.js"></script>
-  <script src="https://unpkg.com/three@0.126.0/examples/js/lines/Line2.js"></script>
 </head>
 <body>
 
@@ -59,7 +56,7 @@ async function activateXR() {
   let isDrawing = false;
   let line;
   let lineGeometry;
-  let startPoint;
+  let startPoint = null;
 
   session.addEventListener("select", () => {
     if (!isDrawing) {
@@ -68,23 +65,15 @@ async function activateXR() {
         isDrawing = true;
         startPoint = new THREE.Vector3().copy(reticle.position);
 
-        // Use Line2 and LineMaterial for thicker lines
-        lineGeometry = new THREE.LineGeometry();
-        lineGeometry.setPositions([startPoint.x, startPoint.y, startPoint.z, startPoint.x, startPoint.y, startPoint.z]);
-        
-        const lineMaterial = new THREE.LineMaterial({
-          color: 0xff0000,
-          linewidth: 0.005 // Adjust the width of the line
-        });
-        lineMaterial.resolution.set(window.innerWidth, window.innerHeight);
-
-        line = new THREE.Line2(lineGeometry, lineMaterial);
-        line.computeLineDistances();
+        lineGeometry = new THREE.BufferGeometry().setFromPoints([startPoint, startPoint]);
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+        line = new THREE.Line(lineGeometry, lineMaterial);
         scene.add(line);
       }
     } else {
       // Finish drawing the line
       isDrawing = false;
+      startPoint = null; // Clear start point for the next line
     }
   });
 
@@ -114,14 +103,10 @@ async function activateXR() {
         reticle.updateMatrixWorld(true);
       }
 
-      if (isDrawing && line && reticle && reticle.visible) {
+      if (isDrawing && line && reticle && reticle.visible && startPoint) {
         // Update the line geometry to follow the reticle's position
         const currentPoint = new THREE.Vector3().copy(reticle.position);
-        lineGeometry.setPositions([
-          startPoint.x, startPoint.y, startPoint.z,
-          currentPoint.x, currentPoint.y, currentPoint.z
-        ]);
-        lineGeometry.attributes.position.needsUpdate = true;
+        lineGeometry.setFromPoints([startPoint, currentPoint]);
       }
 
       renderer.render(scene, camera);
